@@ -5,7 +5,7 @@ from pathlib import Path
 import typer
 
 from .ingest import read_book
-from .config import DEFAULT_VOICES
+from .config import DEFAULT_VOICES, TTS_PROVIDER
 from .models import MODES, TONES, BookConfig
 
 app = typer.Typer(help="Ebook -> Tamil/English audiobook")
@@ -76,6 +76,59 @@ def translate(
         typer.echo(f"Translating {ch.index}: {ch.title}")
         out.append({"index": ch.index, "title": ch.title, "paragraphs": translate_chapter(ch, tone, glossary)})
     (folder / "target.json").write_text(json.dumps(out, ensure_ascii=False, indent=2))
+
+
+def load_text_chapters(folder: Path, cfg: BookConfig) -> list[dict]:
+    """Translated text if the book was translated, otherwise the source text."""
+    target = folder / "target.json"
+    if cfg.mode == "translate":
+        if not target.exists():
+            raise typer.BadParameter("Run `tamilbook translate` first (no target.json).")
+        return json.loads(target.read_text())
+    return json.loads((folder / "source.json").read_text())
+
+
+@app.command()
+def tts(
+    folder: Path,
+    limit: int = typer.Option(0, help="Only first N chapters (0 = all)"),
+    yes: bool = typer.Option(False, "--yes", help="Skip the cost confirmation"),
+):
+    """Synthesize speech per chapter into <folder>/audio/chapter_NN.mp3."""
+    from .audio.master import join_chapter
+    from .tts import get_provider
+    from .tts.synth import count_chars, synthesize_paragraphs
+
+    cfg = BookConfig.load(folder)
+    lang = cfg.target_lang
+    voice = cfg.voices.get(lang) or DEFAULT_VOICES[lang]
+    chapters = load_text_chapters(folder, cfg)[: limit or None]
+    chars = sum(count_chars(c["paragraphs"], lang) for c in chapters)
+    typer.echo(f"{len(chapters)} chapters, {chars:,} characters, voice {voice} ({lang}).")
+    typer.echo(f"Estimated cost: about {chars:,} ElevenLabs credits (~1 credit per character; cached text is free).")
+    if not yes:
+        typer.confirm("Proceed?", abort=True)
+    provider = get_provider(TTS_PROVIDER)
+    for ch in chapters:
+        out = folder / "audio" / f"chapter_{ch['index']:02d}.mp3"
+        typer.echo(f"Chapter {ch['index']}: {ch['title']}")
+        parts = synthesize_paragraphs(provider, ch["paragraphs"], voice, lang, folder / "cache")
+        join_chapter(parts, out)
+
+
+@app.command()
+def build(folder: Path):
+    """Combine chapter MP3s into <folder>/<slug>.m4b with chapter markers."""
+    from .audio.master import make_m4b
+
+    cfg = BookConfig.load(folder)
+    titles = {c["index"]: c["title"] for c in load_text_chapters(folder, cfg)}
+    files = sorted((folder / "audio").glob("chapter_*.mp3"))
+    if not files:
+        raise typer.BadParameter("No audio found; run `tamilbook tts` first.")
+    chapters = [(titles.get(int(f.stem.split("_")[1]), f.stem), f) for f in files]
+    out = make_m4b(chapters, folder / f"{cfg.slug}-{cfg.target_lang}.m4b", cfg.title, cfg.author)
+    typer.echo(f"Wrote {out}")
 
 
 if __name__ == "__main__":

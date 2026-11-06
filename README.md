@@ -11,3 +11,12 @@ Plan: see the approved plan (ingest -> translate -> tts -> master -> package -> 
     pip install -e '.[dev]'
     tamilbook ingest mybook.epub --source-lang en --mode translate
     tamilbook translate books/mybook          # asks for tone
+
+## Making audio
+
+    export ELEVENLABS_API_KEY=...        # or put it in .env
+    tamilbook tts books/mybook           # shows character/credit estimate, asks to proceed
+    tamilbook build books/mybook         # -> books/mybook/mybook-<lang>.m4b with chapters
+
+`tts --limit 1` is a cheap way to test one chapter first. Identical text is cached in
+`books/<slug>/cache/`, so re-runs only pay for changed paragraphs.
