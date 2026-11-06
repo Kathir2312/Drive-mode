@@ -10,9 +10,11 @@ TONES = {
         "sentences, easy to follow when heard."
     ),
     "author": (
-        "Preserve the original author's voice: period diction, imagery, sentence rhythm and "
-        "formality. Choose Tamil equivalents that carry the same feel; do not flatten the style "
-        "into modern colloquial speech, but keep it listenable."
+        "Preserve the original author's voice: formal, precise sentence structure, long "
+        "sentences where the author uses them, period feel and imagery. Write in modern "
+        "standard written Tamil, not archaic or classical Tamil: prefer words in current "
+        "use (ரோமம், மேஜை, ஜன்னல், ரயில்) over pure-Tamil coinages or old forms "
+        "(உரோமம், etc.). Do not use colloquial spoken forms either; keep it listenable."
     ),
 }
 
