@@ -5,6 +5,7 @@ from pathlib import Path
 import typer
 
 from .ingest import read_book
+from .config import DEFAULT_VOICES
 from .models import MODES, TONES, BookConfig
 
 app = typer.Typer(help="Ebook -> Tamil/English audiobook")
@@ -29,7 +30,9 @@ def ingest(
     slug = slugify(book.title)
     folder = BOOKS / slug
     folder.mkdir(parents=True, exist_ok=True)
-    BookConfig(slug, book.title, book.author, source_lang, mode, None, rights).save(folder)
+    BookConfig(
+        slug, book.title, book.author, source_lang, mode, None, rights, dict(DEFAULT_VOICES)
+    ).save(folder)
     (folder / "source.json").write_text(
         json.dumps([c.__dict__ for c in book.chapters], ensure_ascii=False, indent=2)
     )

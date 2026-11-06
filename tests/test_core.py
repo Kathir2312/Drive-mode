@@ -57,3 +57,13 @@ def test_ingest_cli(tmp_path, monkeypatch):
     r = CliRunner().invoke(app, ["ingest", "bk.txt", "--source-lang", "en", "--mode", "translate"])
     assert r.exit_code == 0, r.output
     assert json.loads((tmp_path / "books/bk/source.json").read_text())[0]["paragraphs"] == ["One.", "Two."]
+
+
+def test_ingest_saves_default_voices(tmp_path, monkeypatch):
+    from tamilbook.config import DEFAULT_VOICES
+
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "bk.txt").write_text("Chapter 1\n\nOne.\n\nTwo.")
+    CliRunner().invoke(app, ["ingest", "bk.txt"])
+    cfg = BookConfig.load(tmp_path / "books/bk")
+    assert cfg.voices == DEFAULT_VOICES
